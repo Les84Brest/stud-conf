@@ -1,13 +1,18 @@
 <?php
+// app/Models/User.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -16,11 +21,6 @@ class User extends Authenticatable
     public const ROLE_EXPERT = 'expert';
     public const ROLE_OBSERVER = 'observer';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -30,21 +30,11 @@ class User extends Authenticatable
         'last_login_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -56,41 +46,44 @@ class User extends Authenticatable
     }
 
     /**
-     * Проверка, является ли пользователь администратором
+     * Проверка доступа к Filament
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->role === self::ROLE_ADMIN && $this->is_active;
+    }
+
+    /**
+     * Проверка ролей
      */
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
     }
 
-    /**
-     * Проверка, является ли пользователь экспертом
-     */
     public function isExpert(): bool
     {
         return $this->role === self::ROLE_EXPERT;
     }
 
-    /**
-     * Проверка, является ли пользователь наблюдателем
-     */
     public function isObserver(): bool
     {
         return $this->role === self::ROLE_OBSERVER;
     }
 
-    /**
-     * Проверка активности пользователя
-     */
     public function isActive(): bool
     {
-        return $this->is_active && $this->role !== self::ROLE_ADMIN;
+        return $this->is_active;
     }
 
     /**
-     * Получить все события, где пользователь является экспертом
+     * Связи
      */
-    public function events(): HasMany
+    
+    /**
+     * События, где пользователь является экспертом
+     */
+    public function events(): BelongsToMany
     {
         return $this->belongsToMany(Event::class, 'expert_event')
                     ->withPivot('is_primary')
@@ -98,7 +91,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Получить все оценки пользователя
+     * Оценки, выставленные пользователем
      */
     public function assessments(): HasMany
     {
@@ -106,11 +99,19 @@ class User extends Authenticatable
     }
 
     /**
-     * Получить логи активности пользователя
+     * Логи активности пользователя
      */
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    /**
+     * Логи изменений оценок
+     */
+    public function assessmentLogs(): HasMany
+    {
+        return $this->hasMany(AssessmentLog::class);
     }
 
     /**
