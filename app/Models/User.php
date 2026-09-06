@@ -46,7 +46,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Проверка доступа к Filament
+     * Проверка доступа к Filament панели
      */
     public function canAccessPanel(Panel $panel): bool
     {
@@ -79,10 +79,6 @@ class User extends Authenticatable implements FilamentUser
     /**
      * Связи
      */
-    
-    /**
-     * События, где пользователь является экспертом
-     */
     public function events(): BelongsToMany
     {
         return $this->belongsToMany(Event::class, 'expert_event')
@@ -90,33 +86,21 @@ class User extends Authenticatable implements FilamentUser
                     ->withTimestamps();
     }
 
-    /**
-     * Оценки, выставленные пользователем
-     */
     public function assessments(): HasMany
     {
         return $this->hasMany(Assessment::class, 'expert_id');
     }
 
-    /**
-     * Логи активности пользователя
-     */
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
     }
 
-    /**
-     * Логи изменений оценок
-     */
     public function assessmentLogs(): HasMany
     {
         return $this->hasMany(AssessmentLog::class);
     }
 
-    /**
-     * Обновление времени последнего входа
-     */
     public function updateLastLogin(): void
     {
         $this->update(['last_login_at' => now()]);
