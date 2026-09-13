@@ -1,9 +1,9 @@
 <?php
+// app/Filament/Resources/Assessments/Pages/ListAssessments.php
 
 namespace App\Filament\Resources\Assessments\Pages;
 
 use App\Filament\Resources\Assessments\AssessmentResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListAssessments extends ListRecords
@@ -13,7 +13,9 @@ class ListAssessments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            \Filament\Actions\CreateAction::make()
+                ->label('Новая оценка')
+                ->icon('heroicon-o-plus'),
         ];
     }
 }

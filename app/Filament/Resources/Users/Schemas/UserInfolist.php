@@ -3,9 +3,10 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use Filament\Infolists\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Support\Enums\TextSize;
 use Filament\Schemas\Schema;
 
 class UserInfolist
@@ -21,7 +22,7 @@ class UserInfolist
                         
                         TextEntry::make('name')
                             ->label('Имя')
-                            ->size(TextEntry\TextEntrySize::Large),
+                            ->size(TextSize::Large),
                         
                         TextEntry::make('email')
                             ->label('Email')

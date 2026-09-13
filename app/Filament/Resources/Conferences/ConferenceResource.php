@@ -24,12 +24,15 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ConferenceResource extends Resource
 {
     protected static ?string $model = Conference::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    
+    protected static string|UnitEnum|null $navigationGroup = 'Управление конференциями';
     
     protected static ?string $recordTitleAttribute = 'title';
 
