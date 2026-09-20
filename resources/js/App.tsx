@@ -6,8 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import EventPage from "@/pages/expert/EventPage";
 import LoginPage from "@/pages/auth/LoginPage";
-import AssessmentPage from '@/pages/expert/AssessmentPage';
+import AssessmentPage from "@/pages/expert/AssessmentPage";
 import DashboardPage from "@/pages/expert/DashboardPage";
+import SettingsPage from '@/pages/expert/SettingsPage';
 
 const App = observer(function App() {
     const auth = useAuth();
@@ -56,6 +57,14 @@ const App = observer(function App() {
                 element={
                     <ProtectedRoute>
                         <AssessmentPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <SettingsPage />
                     </ProtectedRoute>
                 }
             />
