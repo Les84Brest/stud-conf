@@ -116,30 +116,33 @@ class EventInfolist
 
                 Section::make('Критерии оценки')
                     ->schema([
-                        TextEntry::make('criteria')
+                        TextEntry::make('criteria_list')
                             ->label('Критерии')
-                            ->formatStateUsing(function ($record) {
+                            ->getStateUsing(function ($record) {
                                 $criteria = $record->criteria()->get();
+                                if ($criteria->isEmpty()) {
+                                    return 'Критерии не назначены';
+                                }
                                 return $criteria->map(function ($criterion) {
                                     return $criterion->name . ' (' . $criterion->max_value . ' баллов)';
                                 })->implode(', ');
                             })
-                            ->placeholder('Критерии не назначены')
                             ->columnSpanFull(),
                     ]),
 
                 Section::make('Эксперты')
                     ->schema([
-                        TextEntry::make('experts')
+                        TextEntry::make('experts_list')
                             ->label('Назначенные эксперты')
-                            ->formatStateUsing(function ($record) {
-                                return $record->experts()->get()
-                                    ->map(function ($expert) {
-                                        return $expert->name . ' (' . $expert->email . ')';
-                                    })
-                                    ->implode(', ');
+                            ->getStateUsing(function ($record) {
+                                $experts = $record->experts()->get();
+                                if ($experts->isEmpty()) {
+                                    return 'Эксперты не назначены';
+                                }
+                                return $experts->map(function ($expert) {
+                                    return $expert->name . ' (' . $expert->email . ')';
+                                })->implode(', ');
                             })
-                            ->placeholder('Эксперты не назначены')
                             ->columnSpanFull(),
                     ]),
 

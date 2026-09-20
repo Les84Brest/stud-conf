@@ -3,6 +3,11 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TestController;
+use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\PresentationController;
+use App\Http\Controllers\Api\AssessmentController;
+use App\Http\Controllers\Api\ProfileController;
+
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,7 +25,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/check', [AuthController::class, 'check']);
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
     
     // Администраторские маршруты
     Route::middleware(['role:admin'])->group(function () {
@@ -46,3 +50,19 @@ Route::middleware(['auth:sanctum', 'role:expert'])->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/all-roles', [TestController::class, 'allRoles']);
 });
+
+Route::middleware('auth:sanctum')->group(function () {
+    // ... существующие маршруты
+
+    Route::get('/events', [EventController::class, 'index']);
+    Route::get('/events/{event}', [EventController::class, 'show']);
+
+    Route::get('/events/{event}/presentations', [PresentationController::class, 'byEvent']);
+    Route::get('/presentations/{presentation}', [PresentationController::class, 'show']);
+
+    Route::post('/assessments', [AssessmentController::class, 'store']);
+
+    Route::patch('/profile', [ProfileController::class, 'update']);
+    Route::post('/change-password', [ProfileController::class, 'changePassword']);
+});
+

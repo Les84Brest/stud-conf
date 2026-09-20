@@ -1,52 +1,47 @@
 // resources/js/stores/AuthStore.ts
-import { makeAutoObservable, runInAction } from 'mobx';
-import { authApi } from '@/api/auth.api';
-import { extractErrorMessage } from '@/api/client';
-import type { LoginRequest, User } from '@/types';
+import { makeAutoObservable, runInAction } from "mobx";
+import { authApi } from "@/api/auth.api";
+import { extractErrorMessage } from "@/api/client";
+import type { LoginRequest, User } from "@/types";
+import type { RootStore } from "./RootStore";
+import { profileApi } from '@/api/profile.api';
 
-const TOKEN_KEY = 'auth_token';
+const TOKEN_KEY = "auth_token";
 
-export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+export type LoadingState = "idle" | "loading" | "success" | "error";
 
 export class AuthStore {
     user: User | null = null;
     token: string | null = localStorage.getItem(TOKEN_KEY);
-    loadingState: LoadingState = 'idle';
+    loadingState: LoadingState = "idle";
     error: string | null = null;
     initialized = false;
 
-    constructor() {
-        makeAutoObservable(this, {}, { autoBind: true });
+    private rootStore: RootStore;
+
+    constructor(rootStore: RootStore) {
+        this.rootStore = rootStore;
+        makeAutoObservable(this, { rootStore: false }, { autoBind: true });
     }
 
-    // ============ Геттеры ============
     get isAuthenticated(): boolean {
-        return !!this.token && !!this.user;
+        return !!this.user && !!this.token;
     }
 
     get isAdmin(): boolean {
-        return this.user?.role === 'admin';
+        return this.user?.role === "admin";
     }
 
     get isExpert(): boolean {
-        return this.user?.role === 'expert';
-    }
-
-    get isObserver(): boolean {
-        return this.user?.role === 'observer';
+        return this.user?.role === "expert";
     }
 
     get isLoading(): boolean {
-        return this.loadingState === 'loading';
+        return this.loadingState === "loading";
     }
 
-    // ============ Действия ============
-
-    /**
-     * Вход в систему
-     */
     async login(credentials: LoginRequest): Promise<boolean> {
-        this.loadingState = 'loading';
+        this.loadingState = "loading";
         this.error = null;
 
         try {
@@ -55,7 +50,7 @@ export class AuthStore {
             runInAction(() => {
                 this.user = response.user;
                 this.token = response.token;
-                this.loadingState = 'success';
+                this.loadingState = "success";
                 this.initialized = true;
                 localStorage.setItem(TOKEN_KEY, response.token);
             });
@@ -64,38 +59,35 @@ export class AuthStore {
         } catch (error) {
             runInAction(() => {
                 this.error = extractErrorMessage(error);
-                this.loadingState = 'error';
+                this.loadingState = "error";
             });
             return false;
         }
     }
 
-    /**
-     * Загрузить текущего пользователя (при старте приложения)
-     */
     async fetchUser(): Promise<boolean> {
         if (!this.token) {
             this.initialized = true;
             return false;
         }
 
-        this.loadingState = 'loading';
+        this.loadingState = "loading";
 
         try {
             const user = await authApi.me();
 
             runInAction(() => {
                 this.user = user;
-                this.loadingState = 'success';
+                this.loadingState = "success";
                 this.initialized = true;
             });
 
             return true;
-        } catch (error) {
+        } catch {
             runInAction(() => {
                 this.user = null;
                 this.token = null;
-                this.loadingState = 'error';
+                this.loadingState = "error";
                 this.initialized = true;
                 localStorage.removeItem(TOKEN_KEY);
             });
@@ -103,38 +95,92 @@ export class AuthStore {
         }
     }
 
-    /**
-     * Выход из системы
-     */
     async logout(): Promise<void> {
         try {
             if (this.token) {
                 await authApi.logout();
             }
         } catch {
-            // Игнорируем ошибки при выходе
+            // Игнорируем ошибки
         } finally {
             runInAction(() => {
                 this.user = null;
                 this.token = null;
-                this.loadingState = 'idle';
+                this.loadingState = "idle";
                 this.error = null;
                 localStorage.removeItem(TOKEN_KEY);
             });
+
+            // Очищаем связанные сторы
+            this.rootStore.events.reset();
+            this.rootStore.presentations.reset();
+            this.rootStore.assessment.reset();
         }
     }
 
-    /**
-     * Сбросить ошибку
-     */
     clearError(): void {
         this.error = null;
     }
 
-    /**
-     * Установить пользователя вручную (например, после регистрации)
-     */
     setUser(user: User): void {
         this.user = user;
+    }
+
+    /**
+     * Обновить профиль пользователя.
+     */
+    async updateProfile(name: string, email: string, affiliation: string | null = null): Promise<boolean> {
+        this.loadingState = "loading";
+        this.error = null;
+
+        try {
+            const response = await profileApi.update({ name, email, affiliation });
+
+            runInAction(() => {
+                this.user = response.user;
+                this.loadingState = "success";
+            });
+
+            return true;
+        } catch (error) {
+            runInAction(() => {
+                this.error = extractErrorMessage(error);
+                this.loadingState = "error";
+            });
+
+            return false;
+        }
+    }
+
+    /**
+     * Сменить пароль.
+     */
+    async changePassword(
+        currentPassword: string,
+        newPassword: string,
+        confirmPassword: string,
+    ): Promise<boolean> {
+        this.loadingState = "loading";
+        this.error = null;
+
+        try {
+            await profileApi.changePassword({
+                current_password: currentPassword,
+                new_password: newPassword,
+                new_password_confirmation: confirmPassword,
+            });
+
+            runInAction(() => {
+                this.loadingState = "success";
+            });
+
+            return true;
+        } catch (error) {
+            runInAction(() => {
+                this.error = extractErrorMessage(error);
+                this.loadingState = "error";
+            });
+            return false;
+        }
     }
 }
