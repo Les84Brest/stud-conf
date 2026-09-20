@@ -3,6 +3,7 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { authApi } from '@/api/auth.api';
 import { extractErrorMessage } from '@/api/client';
 import type { LoginRequest, User } from '@/types';
+import type { RootStore } from './RootStore';
 
 const TOKEN_KEY = 'auth_token';
 
@@ -15,13 +16,15 @@ export class AuthStore {
     error: string | null = null;
     initialized = false;
 
-    constructor() {
-        makeAutoObservable(this, {}, { autoBind: true });
+    private rootStore: RootStore;
+
+    constructor(rootStore: RootStore) {
+        this.rootStore = rootStore;
+        makeAutoObservable(this, { rootStore: false }, { autoBind: true });
     }
 
-    // ============ Геттеры ============
     get isAuthenticated(): boolean {
-        return !!this.token && !!this.user;
+        return !!this.user && !!this.token;
     }
 
     get isAdmin(): boolean {
@@ -32,19 +35,10 @@ export class AuthStore {
         return this.user?.role === 'expert';
     }
 
-    get isObserver(): boolean {
-        return this.user?.role === 'observer';
-    }
-
     get isLoading(): boolean {
         return this.loadingState === 'loading';
     }
 
-    // ============ Действия ============
-
-    /**
-     * Вход в систему
-     */
     async login(credentials: LoginRequest): Promise<boolean> {
         this.loadingState = 'loading';
         this.error = null;
@@ -70,9 +64,6 @@ export class AuthStore {
         }
     }
 
-    /**
-     * Загрузить текущего пользователя (при старте приложения)
-     */
     async fetchUser(): Promise<boolean> {
         if (!this.token) {
             this.initialized = true;
@@ -91,7 +82,7 @@ export class AuthStore {
             });
 
             return true;
-        } catch (error) {
+        } catch {
             runInAction(() => {
                 this.user = null;
                 this.token = null;
@@ -103,16 +94,13 @@ export class AuthStore {
         }
     }
 
-    /**
-     * Выход из системы
-     */
     async logout(): Promise<void> {
         try {
             if (this.token) {
                 await authApi.logout();
             }
         } catch {
-            // Игнорируем ошибки при выходе
+            // Игнорируем ошибки
         } finally {
             runInAction(() => {
                 this.user = null;
@@ -121,19 +109,18 @@ export class AuthStore {
                 this.error = null;
                 localStorage.removeItem(TOKEN_KEY);
             });
+
+            // Очищаем связанные сторы
+            this.rootStore.events.reset();
+            this.rootStore.presentations.reset();
+            this.rootStore.assessment.reset();
         }
     }
 
-    /**
-     * Сбросить ошибку
-     */
     clearError(): void {
         this.error = null;
     }
 
-    /**
-     * Установить пользователя вручную (например, после регистрации)
-     */
     setUser(user: User): void {
         this.user = user;
     }

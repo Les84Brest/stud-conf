@@ -53,7 +53,7 @@ class Presentation extends Model
         return $this->belongsToMany(Author::class, 'presentation_author')
                     ->withPivot('is_presenter', 'is_corresponding', 'order')
                     ->withTimestamps()
-                    ->orderBy('pivot_order');
+                    ->orderBy('presentation_author.order');
     }
 
     /**

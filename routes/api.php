@@ -3,6 +3,10 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TestController;
+use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\PresentationController;
+use App\Http\Controllers\Api\AssessmentController;
+
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,3 +50,16 @@ Route::middleware(['auth:sanctum', 'role:expert'])->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/all-roles', [TestController::class, 'allRoles']);
 });
+
+Route::middleware('auth:sanctum')->group(function () {
+    // ... существующие маршруты
+
+    Route::get('/events', [EventController::class, 'index']);
+    Route::get('/events/{event}', [EventController::class, 'show']);
+
+    Route::get('/events/{event}/presentations', [PresentationController::class, 'byEvent']);
+    Route::get('/presentations/{presentation}', [PresentationController::class, 'show']);
+
+    Route::post('/assessments', [AssessmentController::class, 'store']);
+});
+
