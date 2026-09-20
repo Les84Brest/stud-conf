@@ -1,0 +1,57 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+
+        /* Строгая типизация */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+
+        /* Модули и совместимость */
+        "moduleDetection": "force",
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+
+        /* Vite-специфичные */
+        "noEmit": true,
+        "skipLibCheck": true,
+
+        /* Пути */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./resources/js/*"],
+            "@components/*": ["./resources/js/components/*"],
+            "@pages/*": ["./resources/js/pages/*"],
+            "@stores/*": ["./resources/js/stores/*"],
+            "@api/*": ["./resources/js/api/*"],
+            "@types/*": ["./resources/js/types/*"],
+            "@utils/*": ["./resources/js/utils/*"],
+            "@context/*": ["./resources/js/context/*"],
+            "@hooks/*": ["./resources/js/hooks/*"]
+        },
+
+        /* Типы окружения */
+        "types": ["vite/client", "node"]
+    },
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.tsx",
+        "resources/js/**/*.d.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "vendor",
+        "public",
+        "storage"
+    ]
+}
