@@ -1,42 +1,44 @@
 // resources/js/stores/AssessmentStore.ts
-import { makeAutoObservable, runInAction } from 'mobx';
-import { assessmentsApi } from '@/api/assessments.api';
-import { extractErrorMessage } from '@/api/client';
-import type {
-    PresentationDetail,
-    SaveAssessmentRequest,
-} from '@/types';
+import { makeAutoObservable, runInAction } from "mobx";
+import { assessmentsApi } from "@/api/assessments.api";
+import { extractErrorMessage } from "@/api/client";
+import type { PresentationDetail, SaveAssessmentRequest } from "@/types";
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const AUTO_SAVE_DELAY = 1500; // мс
 
 export class AssessmentStore {
     current: PresentationDetail | null = null;
-    draftValues: Record<string, number> = {};
-    draftComment = '';
+    draftValues: Record<string, number | undefined> = {};
+    draftComment = "";
 
     loading = false;
-    saveStatus: SaveStatus = 'idle';
+    saveStatus: SaveStatus = "idle";
     error: string | null = null;
     savedAt: string | null = null;
 
     private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor() {
-        makeAutoObservable(this, {
-            autoSaveTimer: false, // не наблюдаем за таймером
-        }, { autoBind: true });
+        makeAutoObservable(
+            this,
+            {
+                autoSaveTimer: false, // не наблюдаем за таймером
+            },
+            { autoBind: true },
+        );
     }
 
     // ============ Computed ============
     get draftTotal(): number {
+        
         return Object.values(this.draftValues).reduce(
-            (sum, v) => sum + (Number.isFinite(v) ? v : 0),
+            (sum, v) =>
+                sum + (typeof v === "number" && Number.isFinite(v) ? v : 0),
             0,
         );
     }
-
     get maxScore(): number {
         if (!this.current) return 0;
         return this.current.event.criteria.reduce(
@@ -58,7 +60,7 @@ export class AssessmentStore {
         if (!this.current) return false;
         const saved = this.current.my_assessment;
         if (!saved) {
-            return this.draftTotal > 0 || this.draftComment.trim() !== '';
+            return this.draftTotal > 0 || this.draftComment.trim() !== "";
         }
 
         const savedValues = saved.criteria_values;
@@ -71,15 +73,15 @@ export class AssessmentStore {
             if (this.draftValues[key] !== savedValues[key]) return true;
         }
 
-        return (saved.comment ?? '') !== this.draftComment.trim();
+        return (saved.comment ?? "") !== this.draftComment.trim();
     }
 
     get isSaving(): boolean {
-        return this.saveStatus === 'saving';
+        return this.saveStatus === "saving";
     }
 
     get isSaved(): boolean {
-        return this.saveStatus === 'saved';
+        return this.saveStatus === "saved";
     }
 
     // ============ Auto-save ============
@@ -125,14 +127,17 @@ export class AssessmentStore {
 
                 const initial: Record<string, number> = {};
                 for (const criterion of detail.event.criteria) {
-                    initial[criterion.key] =
-                        detail.my_assessment?.criteria_values[criterion.key] ?? 0;
+                    const savedValue =
+                        detail.my_assessment?.criteria_values[criterion.key];
+                    if (savedValue !== undefined) {
+                        initial[criterion.key] = savedValue;
+                    }
                 }
 
                 this.draftValues = initial;
-                this.draftComment = detail.my_assessment?.comment ?? '';
+                this.draftComment = detail.my_assessment?.comment ?? "";
                 this.savedAt = detail.my_assessment?.saved_at ?? null;
-                this.saveStatus = detail.my_assessment ? 'saved' : 'idle';
+                this.saveStatus = detail.my_assessment ? "saved" : "idle";
                 this.loading = false;
             });
         } catch (error) {
@@ -152,7 +157,7 @@ export class AssessmentStore {
         if (!this.hasChanges && !isAutoSave) return false;
 
         this.cancelAutoSave();
-        this.saveStatus = 'saving';
+        this.saveStatus = "saving";
         this.error = null;
 
         try {
@@ -178,14 +183,14 @@ export class AssessmentStore {
                     };
                 }
                 this.savedAt = response.data.saved_at;
-                this.saveStatus = 'saved';
+                this.saveStatus = "saved";
             });
 
             return true;
         } catch (error) {
             runInAction(() => {
                 this.error = extractErrorMessage(error);
-                this.saveStatus = 'error';
+                this.saveStatus = "error";
             });
             return false;
         }
@@ -195,9 +200,9 @@ export class AssessmentStore {
         this.cancelAutoSave();
         this.current = null;
         this.draftValues = {};
-        this.draftComment = '';
+        this.draftComment = "";
         this.loading = false;
-        this.saveStatus = 'idle';
+        this.saveStatus = "idle";
         this.error = null;
         this.savedAt = null;
     }
