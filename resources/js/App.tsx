@@ -9,6 +9,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import AssessmentPage from "@/pages/expert/AssessmentPage";
 import DashboardPage from "@/pages/expert/DashboardPage";
 import SettingsPage from '@/pages/expert/SettingsPage';
+import NotFoundPage from "@/pages/NotFoundPage";
 
 const App = observer(function App() {
     const auth = useAuth();
@@ -71,7 +72,7 @@ const App = observer(function App() {
 
             {/* Редиректы */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
         </Routes>
     );
 });

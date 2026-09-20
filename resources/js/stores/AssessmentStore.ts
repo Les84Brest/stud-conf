@@ -7,28 +7,29 @@ import type {
     SaveAssessmentRequest,
 } from '@/types';
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+const AUTO_SAVE_DELAY = 1500; // мс
+
 export class AssessmentStore {
-    /** Текущий доклад (детально) */
     current: PresentationDetail | null = null;
-
-    /** Значения критериев (в процессе редактирования) */
     draftValues: Record<string, number> = {};
-
-    /** Комментарий (в процессе редактирования) */
     draftComment = '';
 
     loading = false;
-    saving = false;
+    saveStatus: SaveStatus = 'idle';
     error: string | null = null;
     savedAt: string | null = null;
 
+    private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
     constructor() {
-        makeAutoObservable(this, {}, { autoBind: true });
+        makeAutoObservable(this, {
+            autoSaveTimer: false, // не наблюдаем за таймером
+        }, { autoBind: true });
     }
 
     // ============ Computed ============
-
-    /** Сумма текущего драфта */
     get draftTotal(): number {
         return Object.values(this.draftValues).reduce(
             (sum, v) => sum + (Number.isFinite(v) ? v : 0),
@@ -36,7 +37,6 @@ export class AssessmentStore {
         );
     }
 
-    /** Максимально возможный балл */
     get maxScore(): number {
         if (!this.current) return 0;
         return this.current.event.criteria.reduce(
@@ -45,22 +45,21 @@ export class AssessmentStore {
         );
     }
 
-    /** Процент от максимума */
     get draftPercent(): number {
         if (this.maxScore === 0) return 0;
         return Math.round((this.draftTotal / this.maxScore) * 100);
     }
 
-    /** Оценён ли уже этот доклад */
     get isAssessed(): boolean {
         return this.current?.my_assessment !== null;
     }
 
-    /** Есть ли изменения относительно сохранённой оценки */
     get hasChanges(): boolean {
         if (!this.current) return false;
         const saved = this.current.my_assessment;
-        if (!saved) return this.draftTotal > 0 || this.draftComment.trim() !== '';
+        if (!saved) {
+            return this.draftTotal > 0 || this.draftComment.trim() !== '';
+        }
 
         const savedValues = saved.criteria_values;
         const draftKeys = Object.keys(this.draftValues);
@@ -75,19 +74,45 @@ export class AssessmentStore {
         return (saved.comment ?? '') !== this.draftComment.trim();
     }
 
+    get isSaving(): boolean {
+        return this.saveStatus === 'saving';
+    }
+
+    get isSaved(): boolean {
+        return this.saveStatus === 'saved';
+    }
+
+    // ============ Auto-save ============
+
+    private scheduleAutoSave(): void {
+        if (this.autoSaveTimer) {
+            clearTimeout(this.autoSaveTimer);
+        }
+
+        this.autoSaveTimer = setTimeout(() => {
+            void this.save(true);
+        }, AUTO_SAVE_DELAY);
+    }
+
+    private cancelAutoSave(): void {
+        if (this.autoSaveTimer) {
+            clearTimeout(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+    }
+
     // ============ Actions ============
 
     setValue(key: string, value: number): void {
         this.draftValues = { ...this.draftValues, [key]: value };
+        this.scheduleAutoSave();
     }
 
     setComment(comment: string): void {
         this.draftComment = comment;
+        this.scheduleAutoSave();
     }
 
-    /**
-     * Загрузить доклад с критериями и моей оценкой.
-     */
     async fetchPresentation(id: number): Promise<void> {
         this.loading = true;
         this.error = null;
@@ -98,7 +123,6 @@ export class AssessmentStore {
             runInAction(() => {
                 this.current = detail;
 
-                // Инициализация драфта: берём сохранённые значения или нули
                 const initial: Record<string, number> = {};
                 for (const criterion of detail.event.criteria) {
                     initial[criterion.key] =
@@ -108,6 +132,7 @@ export class AssessmentStore {
                 this.draftValues = initial;
                 this.draftComment = detail.my_assessment?.comment ?? '';
                 this.savedAt = detail.my_assessment?.saved_at ?? null;
+                this.saveStatus = detail.my_assessment ? 'saved' : 'idle';
                 this.loading = false;
             });
         } catch (error) {
@@ -120,11 +145,14 @@ export class AssessmentStore {
 
     /**
      * Сохранить оценку.
+     * @param isAutoSave — true, если вызвано автосохранением
      */
-    async save(): Promise<boolean> {
+    async save(isAutoSave = false): Promise<boolean> {
         if (!this.current) return false;
+        if (!this.hasChanges && !isAutoSave) return false;
 
-        this.saving = true;
+        this.cancelAutoSave();
+        this.saveStatus = 'saving';
         this.error = null;
 
         try {
@@ -137,7 +165,6 @@ export class AssessmentStore {
             const response = await assessmentsApi.save(payload);
 
             runInAction(() => {
-                // Обновляем мою оценку в current
                 if (this.current) {
                     this.current = {
                         ...this.current,
@@ -151,28 +178,26 @@ export class AssessmentStore {
                     };
                 }
                 this.savedAt = response.data.saved_at;
-                this.saving = false;
+                this.saveStatus = 'saved';
             });
 
             return true;
         } catch (error) {
             runInAction(() => {
                 this.error = extractErrorMessage(error);
-                this.saving = false;
+                this.saveStatus = 'error';
             });
             return false;
         }
     }
 
-    /**
-     * Сбросить состояние.
-     */
     reset(): void {
+        this.cancelAutoSave();
         this.current = null;
         this.draftValues = {};
         this.draftComment = '';
         this.loading = false;
-        this.saving = false;
+        this.saveStatus = 'idle';
         this.error = null;
         this.savedAt = null;
     }

@@ -1,6 +1,6 @@
 // resources/js/pages/expert/AssessmentPage.tsx
-import { useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     AlertCircle,
     ArrowLeft,
@@ -10,24 +10,25 @@ import {
     Loader2,
     Save,
     User,
-} from 'lucide-react';
-import { observer } from 'mobx-react-lite';
-import { AppShell } from '@/components/layout/app-shell';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
+} from "lucide-react";
+import { observer } from "mobx-react-lite";
+import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
-import { StarRating } from '@/components/common/star-rating';
-import { useStore } from '@/context/StoreContext';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/card";
+import { StarRating } from "@/components/common/star-rating";
+import { useStore } from "@/context/StoreContext";
+import { SaveIndicator } from "@/components/common/save-indicator";
+import { cn } from "@/lib/utils";
 
 const AssessmentPage = observer(function AssessmentPage() {
     const { eventId, presentationId } = useParams<{
@@ -49,12 +50,17 @@ const AssessmentPage = observer(function AssessmentPage() {
         };
     }, [numericPresentationId, assessment]);
 
+    useEffect(() => {
+        return () => {
+            if (assessment.hasChanges && assessment.current) {
+                // Fire-and-forget: сохраняем в фоне, но не сбрасываем стор
+                void assessment.save(true);
+            }
+        };
+    }, [assessment]);
+
     const handleSave = async () => {
-        const success = await assessment.save();
-        if (success) {
-            // Возвращаемся на страницу мероприятия
-            navigate(`/events/${eventId}`);
-        }
+        await assessment.save(false);
     };
 
     // ============ Загрузка ============
@@ -108,23 +114,29 @@ const AssessmentPage = observer(function AssessmentPage() {
         <AppShell
             title={presentation.title}
             breadcrumb={
-                <span className="inline-flex items-center gap-1.5">
+                <nav
+                    aria-label="breadcrumb"
+                    className="flex items-center gap-1.5"
+                >
                     <Link
                         to="/dashboard"
-                        className="hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                     >
                         Панель
                     </Link>
-                    <span>/</span>
+                    <span className="text-muted-foreground/50">/</span>
                     <Link
                         to={`/events/${eventId}`}
-                        className="hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground transition-colors max-w-[200px] truncate"
+                        title={presentation.event.title}
                     >
                         {presentation.event.title}
                     </Link>
-                    <span>/</span>
-                    <span>Оценка</span>
-                </span>
+                    <span className="text-muted-foreground/50">/</span>
+                    <span className="truncate max-w-[200px]">
+                        Оценка доклада
+                    </span>
+                </nav>
             }
             actions={
                 isAlreadyAssessed ? (
@@ -219,7 +231,7 @@ const AssessmentPage = observer(function AssessmentPage() {
                             <CardTitle className="flex items-center justify-between">
                                 <span>Оценка доклада</span>
                                 <span className="text-base font-medium text-muted-foreground">
-                                    {assessment.draftTotal} /{' '}
+                                    {assessment.draftTotal} /{" "}
                                     {assessment.maxScore}
                                 </span>
                             </CardTitle>
@@ -249,9 +261,7 @@ const AssessmentPage = observer(function AssessmentPage() {
                                                 </Label>
                                                 {criterion.description && (
                                                     <p className="mt-1 text-xs text-muted-foreground">
-                                                        {
-                                                            criterion.description
-                                                        }
+                                                        {criterion.description}
                                                     </p>
                                                 )}
                                             </div>
@@ -314,28 +324,36 @@ const AssessmentPage = observer(function AssessmentPage() {
                             Назад
                         </Button>
 
-                        <Button
-                            onClick={handleSave}
-                            disabled={
-                                assessment.saving ||
-                                (!isAlreadyAssessed && !assessment.hasChanges)
-                            }
-                            size="lg"
-                        >
-                            {assessment.saving ? (
-                                <>
-                                    <Loader2 className="size-4 animate-spin" />
-                                    Сохранение...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="size-4" />
-                                    {isAlreadyAssessed
-                                        ? 'Обновить оценку'
-                                        : 'Сохранить оценку'}
-                                </>
-                            )}
-                        </Button>
+                        <div className="flex items-center gap-3">
+                            <SaveIndicator
+                                status={assessment.saveStatus}
+                                savedAt={assessment.savedAt}
+                                error={assessment.error}
+                            />
+
+                            <Button
+                                onClick={handleSave}
+                                disabled={
+                                    assessment.isSaving ||
+                                    !assessment.hasChanges
+                                }
+                                size="lg"
+                            >
+                                {assessment.isSaving ? (
+                                    <>
+                                        <Loader2 className="size-4 animate-spin" />
+                                        Сохранение...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="size-4" />
+                                        {assessment.isAssessed
+                                            ? "Обновить оценку"
+                                            : "Сохранить оценку"}
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
