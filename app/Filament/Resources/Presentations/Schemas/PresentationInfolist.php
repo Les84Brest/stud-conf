@@ -3,7 +3,7 @@
 
 namespace App\Filament\Resources\Presentations\Schemas;
 
-use Filament\Infolists\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Schemas\Schema;
@@ -83,7 +83,7 @@ class PresentationInfolist
                                     ->url(function ($record) {
                                         return $record->file_path ? asset('storage/' . $record->file_path) : null;
                                     })
-                                    ->openInNewTab()
+                                    ->openUrlInNewTab()
                                     ->badge()
                                     ->color('info'),
                                 
@@ -91,7 +91,7 @@ class PresentationInfolist
                                     ->label('Видео')
                                     ->formatStateUsing(fn ($state) => $state ? '▶️ Ссылка' : 'Не указана')
                                     ->url(fn ($record) => $record->video_link)
-                                    ->openInNewTab()
+                                    ->openUrlInNewTab()
                                     ->badge()
                                     ->color('success'),
                             ]),
