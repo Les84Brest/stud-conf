@@ -144,16 +144,6 @@ const LoginPage = observer(() => {
                         </Button>
                     </form>
 
-                    {/* Подсказка для разработки */}
-                    {import.meta.env.DEV && (
-                        <div className="mt-6 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                            <p className="font-semibold mb-1">
-                                Тестовые данные:
-                            </p>
-                            <p>admin@conference.ru / admin123</p>
-                            <p>expert1@conference.ru / expert123</p>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>
