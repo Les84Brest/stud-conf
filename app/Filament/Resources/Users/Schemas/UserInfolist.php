@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Users\Schemas;
 use Filament\Schemas\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\TextSize;
 use Filament\Schemas\Schema;
 
@@ -52,20 +53,28 @@ class UserInfolist
 
                 Section::make('Статистика')
                     ->schema([
-                        TextEntry::make('events_count')
-                            ->label('Количество мероприятий')
-                            ->default(0)
-                            ->getStateUsing(function ($record) {
-                                return $record->events()->count();
-                            }),
-                        
-                        TextEntry::make('assessments_count')
-                            ->label('Выставлено оценок')
-                            ->default(0)
-                            ->getStateUsing(function ($record) {
-                                return $record->assessments()->count();
-                            }),
-                    ])->columns(2),
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('events_count')
+                                    ->label('Мероприятий')
+                                    ->getStateUsing(fn ($record) => $record->events()->count())
+                                    ->badge()
+                                    ->color(fn ($record) => $record->events()->count() === 0 ? 'warning' : 'success'),
+
+                                TextEntry::make('assessments_count')
+                                    ->label('Выставлено оценок')
+                                    ->getStateUsing(fn ($record) => $record->assessments()->count())
+                                    ->badge()
+                                    ->color('info'),
+
+                                TextEntry::make('last_login_at')
+                                    ->label('Последний вход')
+                                    ->dateTime('d.m.Y H:i')
+                                    ->placeholder('Не входил')
+                                    ->badge()
+                                    ->color(fn ($state) => $state ? 'success' : 'warning'),
+                            ]),
+                    ]),
 
                 Section::make('Информация о входе')
                     ->schema([
@@ -82,6 +91,24 @@ class UserInfolist
                             ->label('Последнее обновление')
                             ->dateTime('d.m.Y H:i'),
                     ])->columns(3),
+                Section::make('Мероприятия')
+                    ->schema([
+                        TextEntry::make('events')
+                            ->label('Назначенные мероприятия')
+                            ->formatStateUsing(function ($record) {
+                                if ($record->events->isEmpty()) {
+                                    return 'Не назначен ни на одно мероприятие';
+                                }
+
+                                return $record->events
+                                    ->map(fn ($event) => $event->title)
+                                    ->implode(', ');
+                            })
+                            ->columnSpanFull()
+                            ->badge(fn ($record) => $record->events->isNotEmpty())
+                            ->color('info'),
+                    ])
+                    ->visible(fn ($record) => $record->role === 'expert'),
             ]);
     }
 }

@@ -11,6 +11,10 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Forms\Components\TextInput;
+use App\Filament\Actions\ImportPresentationsAction;
+use App\Exports\PresentationsTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Filament\Actions\Action;
 
 class PresentationsTable
 {
@@ -252,6 +256,19 @@ class PresentationsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->searchable()
-            ->paginated([15, 25, 50, 100, 'all']);
+            ->paginated([15, 25, 50, 100, 'all'])
+            ->headerActions([
+                ImportPresentationsAction::make(),
+                 Action::make('download_template')
+                    ->label('Скачать шаблон')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->action(function () {
+                        return Excel::download(
+                            new PresentationsTemplateExport(),
+                            'template_presentations.xlsx'
+                        );
+        }),
+            ]);
     }
 }

@@ -4,13 +4,17 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Models\User;
+use App\Models\Event;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+
 
 class UserForm
 {
@@ -80,7 +84,25 @@ class UserForm
                             ->required()
                             ->helperText('Администраторы имеют полный доступ к системе'),
                     ]),
-
+                Section::make('Мероприятия')
+                    ->description('Секции и события, на которых эксперт будет оценивать доклады')
+                    ->schema([
+                        CheckboxList::make('events')
+                            ->label('Выберите мероприятия')
+                            ->relationship('events', 'title')
+                            ->options(function () {
+                                return Event::where('is_active', true)
+                                    ->orderBy('title')
+                                    ->pluck('title', 'id')
+                                    ->toArray();
+                            })
+                            ->columns(2)
+                            ->searchable()
+                            ->bulkToggleable()
+                            ->helperText('Эксперт увидит доклады только с этих мероприятий')
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Get $get) => $get('role') === 'expert'),
                 Section::make('Статус')
                     ->schema([
                         Toggle::make('is_active')
