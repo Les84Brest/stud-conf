@@ -28,30 +28,23 @@ class EventReportExport implements
         private readonly Event $event,
         ReportService $reportService,
     ) {
-        // Критерии мероприятия
-        $criteria = $event->criteria()
-            ->where('is_active', true)
-            ->orderBy('event_criteria.sort_order')
-            ->get();
+        $criteria = $reportService->getEventCriteria($event);
+        $flatRows = $reportService->getFlatReport($event);
 
-        // Сводные данные
-        $reportRows = $reportService->getEventReport($event);
+        // Каждую DTO превращаем в плоский массив
+        $this->rows = $flatRows
+            ->map(fn ($row) => array_values($row->toArray($criteria->all())))
+            ->all();
 
-        // Плоские строки для Excel
-        $this->rows = $reportService->getFlatRows($reportRows, $criteria);
-
-        // Заголовки колонок (динамические)
+        // Заголовки — из первой строки (если есть данные)
         $this->headings = !empty($this->rows)
-            ? array_keys($this->rows[0])
-            : ['Нет данных'];
+            ? array_keys($flatRows->first()->toArray($criteria->all()))
+            : $criteria->pluck('name')->prepend('Нет данных')->all();
     }
 
     public function array(): array
     {
-        return array_map(
-            fn (array $row) => array_values($row),
-            $this->rows,
-        );
+        return $this->rows;
     }
 
     public function headings(): array
@@ -61,7 +54,7 @@ class EventReportExport implements
 
     public function title(): string
     {
-        return 'Сводная ведомость';
+        return 'Плоская ведомость';
     }
 
     public function styles(Worksheet $sheet): array
@@ -70,7 +63,6 @@ class EventReportExport implements
         $lastRow = $sheet->getHighestRow();
 
         return [
-            // Шапка — жирный шрифт, серый фон
             1 => [
                 'font' => ['bold' => true, 'size' => 11],
                 'fill' => [
@@ -89,7 +81,6 @@ class EventReportExport implements
                     ],
                 ],
             ],
-            // Все данные — границы
             "A1:{$lastColumn}{$lastRow}" => [
                 'borders' => [
                     'allBorders' => [

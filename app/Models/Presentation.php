@@ -81,6 +81,19 @@ class Presentation extends Model
     }
 
     /**
+     * Получить список авторов без повторений для отображения в таблицах и отчётах.
+     */
+    public function getUniqueAuthorsListAttribute(): string
+    {
+        return $this->authors
+            ->filter(fn ($author) => filled($author?->full_name))
+            ->unique(fn ($author) => $author->id ?? $author->full_name)
+            ->values()
+            ->pluck('full_name')
+            ->implode(', ');
+    }
+
+    /**
      * Получить средний балл
      */
     public function getAverageScoreAttribute(): float

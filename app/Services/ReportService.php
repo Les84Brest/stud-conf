@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTO\AssessmentReportRow;
+use App\DTO\FlatAssessmentRow;
 use App\Models\Assessment;
 use App\Models\Criteria;
 use App\Models\Event;
@@ -39,7 +40,7 @@ class ReportService
 
       
         return $presentations->map(function (Presentation $presentation) use ($criteria, $maxScore, $event) {
-            $authors = $presentation->authors->pluck('full_name')->implode(', ');
+            $authors = $presentation->getUniqueAuthorsListAttribute();
 
             // Группируем оценки по экспертам
             $expertAssessments = $presentation->assessments
@@ -123,5 +124,84 @@ class ReportService
         }
 
         return $flat;
+    }
+
+     /**
+     * Получить плоские строки для мероприятия.
+     * Одна строка = (доклад, эксперт).
+     *
+     * @return Collection<int, FlatAssessmentRow>
+     */
+    public function getFlatReport(Event $event): Collection
+    {
+        // Критерии мероприятия (для column order)
+        $criteria = $event->criteria()
+            ->where('is_active', true)
+            ->orderBy('event_criteria.sort_order')
+            ->get();
+
+        $criteriaKeys = $criteria->pluck('key')->all();
+        $maxScore = $event->getCalculatedMaxScore();
+
+        // Загружаем доклады с авторами и оценками
+        $presentations = Presentation::query()
+            ->where('event_id', $event->id)
+            ->with([
+                'authors:id,full_name',
+                'assessments.expert:id,name',
+                'event.conference:id,title',
+            ])
+            ->orderBy('title')
+            ->get();
+
+        $rows = collect();
+
+        foreach ($presentations as $presentation) {
+            $authors = $presentation->authors
+                ->pluck('full_name')
+                ->implode(', ');
+
+            // Для каждого доклада — своя строка на каждого эксперта
+            foreach ($presentation->assessments as $assessment) {
+                $criteriaValues = $assessment->criteria_values ?? [];
+
+                // Нормализуем: только ключи критериев мероприятия
+                $normalized = [];
+                foreach ($criteriaKeys as $key) {
+                    $normalized[$key] = (int) ($criteriaValues[$key] ?? 0);
+                }
+
+                $rows->push(new FlatAssessmentRow(
+                    presentationId: $presentation->id,
+                    presentationTitle: $presentation->title,
+                    authors: $authors,
+                    eventId: $event->id,
+                    eventTitle: $event->title,
+                    conferenceTitle: $presentation->event->conference->title,
+                    expertId: $assessment->expert->id,
+                    expertName: $assessment->expert->name,
+                    criteriaValues: $normalized,
+                    totalScore: $assessment->total_score,
+                    maxScore: $maxScore,
+                    comment: $assessment->comment,
+                    savedAt: $assessment->saved_at?->toISOString(),
+                ));
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Критерии мероприятия (для заголовков таблицы и Excel).
+     *
+     * @return Collection<int, \App\Models\Criteria>
+     */
+    public function getEventCriteria(Event $event): Collection
+    {
+        return $event->criteria()
+            ->where('is_active', true)
+            ->orderBy('event_criteria.sort_order')
+            ->get();
     }
 }
