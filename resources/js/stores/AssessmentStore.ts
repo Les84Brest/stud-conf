@@ -2,7 +2,8 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { assessmentsApi } from "@/api/assessments.api";
 import { extractErrorMessage } from "@/api/client";
-import type { PresentationDetail, SaveAssessmentRequest } from "@/types";
+import type { PresentationDetail, SaveAssessmentRequest, Presentation } from "@/types";
+import type { RootStore } from "./RootStore";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -13,6 +14,8 @@ export class AssessmentStore {
     draftValues: Record<string, number | undefined> = {};
     draftComment = "";
 
+    private rootStore: RootStore;
+
     loading = false;
     saveStatus: SaveStatus = "idle";
     error: string | null = null;
@@ -20,10 +23,13 @@ export class AssessmentStore {
 
     private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
-    constructor() {
+    constructor(rootStore: RootStore) {
+        this.rootStore = rootStore;
+
         makeAutoObservable(
             this,
             {
+                rootStore: false,
                 autoSaveTimer: false, // не наблюдаем за таймером
             },
             { autoBind: true },
@@ -41,6 +47,7 @@ export class AssessmentStore {
     }
     get maxScore(): number {
         if (!this.current) return 0;
+
         return this.current.event.criteria.reduce(
             (sum, c) => sum + c.max_value,
             0,
@@ -49,6 +56,7 @@ export class AssessmentStore {
 
     get draftPercent(): number {
         if (this.maxScore === 0) return 0;
+
         return Math.round((this.draftTotal / this.maxScore) * 100);
     }
 
@@ -58,7 +66,9 @@ export class AssessmentStore {
 
     get hasChanges(): boolean {
         if (!this.current) return false;
+
         const saved = this.current.my_assessment;
+
         if (!saved) {
             return this.draftTotal > 0 || this.draftComment.trim() !== "";
         }
@@ -155,9 +165,10 @@ export class AssessmentStore {
     async save(isAutoSave = false): Promise<boolean> {
         if (!this.current) return false;
         if (!this.hasChanges && !isAutoSave) return false;
+        if (this.saveStatus === 'saving') return false;
 
         this.cancelAutoSave();
-        this.saveStatus = "saving";
+        this.saveStatus = 'saving';
         this.error = null;
 
         try {
@@ -170,6 +181,7 @@ export class AssessmentStore {
             const response = await assessmentsApi.save(payload);
 
             runInAction(() => {
+                // 1. Обновляем current
                 if (this.current) {
                     this.current = {
                         ...this.current,
@@ -181,19 +193,75 @@ export class AssessmentStore {
                             saved_at: response.data.saved_at,
                         },
                     };
+
+                    // 2. ✅ Обновляем доклад в PresentationStore
+                    this.syncPresentationStore();
                 }
                 this.savedAt = response.data.saved_at;
-                this.saveStatus = "saved";
+                this.saveStatus = 'saved';
             });
 
             return true;
         } catch (error) {
             runInAction(() => {
                 this.error = extractErrorMessage(error);
-                this.saveStatus = "error";
+                this.saveStatus = 'error';
             });
+
             return false;
         }
+    }
+
+    /**
+     * Синхронизирует состояние текущего доклада в PresentationStore.
+     */
+    private syncPresentationStore(): void {
+        if (!this.current) return;
+
+        const updated = this.rootStore.presentations.items.find(
+            (p) => p.id === this.current!.id,
+        );
+
+        if (!updated) return;
+
+        // Проверяем, есть ли оценка текущего эксперта
+        const hasMyAssessment = this.current.my_assessment !== null;
+
+        // Обновляем presentation: количество оценок и моя оценка
+        const newAssessmentCount = hasMyAssessment
+            ? Math.max(updated.assessments_count ?? 0, 1)
+            : (updated.assessments_count ?? 0);
+
+        // Пересчитываем средний балл (упрощённо — аппроксимация)
+        // Точный пересчёт требует данных от API, но мы можем оценить
+        const oldMyScore = updated.my_assessment?.total_score ?? 0;
+        const newMyScore = this.current.my_assessment?.total_score ?? 0;
+        const oldCount = updated.assessments_count ?? 0;
+        const oldAvg = updated.assessments_avg ?? 0;
+
+        let newAvg = oldAvg;
+        if (hasMyAssessment) {
+            if (oldCount === 0) {
+                // Первая оценка
+                newAvg = newMyScore;
+            } else if (updated.my_assessment) {
+                // Обновление существующей оценки
+                const sumWithoutMe = oldAvg * oldCount - oldMyScore;
+                newAvg = (sumWithoutMe + newMyScore) / oldCount;
+            } else {
+                // Новая оценка от меня (было 0 моих, стало 1)
+                const sumWithoutMe = oldAvg * oldCount;
+                const newCount = oldCount + 1;
+                newAvg = (sumWithoutMe + newMyScore) / newCount;
+            }
+        }
+
+        this.rootStore.presentations.updateOne({
+            ...updated,
+            my_assessment: this.current.my_assessment,
+            assessments_count: newAssessmentCount,
+            assessments_avg: newAvg ? Math.round(newAvg * 100) / 100 : null,
+        });
     }
 
     reset(): void {

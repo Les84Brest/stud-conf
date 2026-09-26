@@ -46,6 +46,7 @@ class UserForm
                             ->password()
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->rule(Password::default())
+                            ->revealable()
                             ->maxLength(255)
                             ->dehydrateStateUsing(fn ($state) => 
                                 filled($state) ? Hash::make($state) : null
@@ -67,9 +68,13 @@ class UserForm
                             ->same('password')
                             ->maxLength(255)
                             ->dehydrated(false)
+                            ->revealable()
                             ->placeholder('Повторите пароль'),
                     ])->columns(2)
-                    ->hidden(fn (string $operation): bool => $operation === 'edit' && request()->user()->role === 'admin'),
+                   ->hidden(fn (string $operation): bool => 
+                        $operation === 'edit' && !request()->user()?->isAdmin()
+                    ),
+
 
                 Section::make('Назначение ролей')
                     ->schema([

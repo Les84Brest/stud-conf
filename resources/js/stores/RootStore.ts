@@ -14,7 +14,7 @@ export class RootStore {
         this.auth = new AuthStore(this);
         this.events = new EventStore();
         this.presentations = new PresentationStore();
-        this.assessment = new AssessmentStore();
+        this.assessment = new AssessmentStore(this);
     }
 }
 
