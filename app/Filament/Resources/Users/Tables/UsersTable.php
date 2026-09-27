@@ -150,7 +150,32 @@ class UsersTable
                     ->label('Редактировать'),
                 DeleteAction::make()
                     ->label('Удалить')
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        // Retry на 1615
+                        $attempts = 0;
+                        $maxAttempts = 3;
+
+                        while ($attempts < $maxAttempts) {
+                            try {
+                                $record->delete();
+                                break;
+                            } catch (\Illuminate\Database\QueryException $e) {
+                                if ($e->getCode() === 'HY000' 
+                                    && str_contains($e->getMessage(), '1615')
+                                    && $attempts < $maxAttempts - 1
+                                ) {
+                                    // Переподключаемся и пробуем снова
+                                    \DB::disconnect();
+                                    \DB::reconnect();
+                                    $attempts++;
+                                    usleep(100000); // 100мс
+                                    continue;
+                                }
+                                throw $e;
+                            }
+                        }
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
