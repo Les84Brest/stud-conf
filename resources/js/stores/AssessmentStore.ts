@@ -2,12 +2,12 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { assessmentsApi } from "@/api/assessments.api";
 import { extractErrorMessage } from "@/api/client";
-import type { PresentationDetail, SaveAssessmentRequest, Presentation } from "@/types";
+import type { PresentationDetail, SaveAssessmentRequest } from "@/types";
 import type { RootStore } from "./RootStore";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-const AUTO_SAVE_DELAY = 1500; // мс
+const AUTO_SAVE_DELAY = 1500;
 
 export class AssessmentStore {
     current: PresentationDetail | null = null;
@@ -30,21 +30,22 @@ export class AssessmentStore {
             this,
             {
                 rootStore: false,
-                autoSaveTimer: false, // не наблюдаем за таймером
+                autoSaveTimer: false,
             },
             { autoBind: true },
         );
     }
 
     // ============ Computed ============
+
     get draftTotal(): number {
-        
         return Object.values(this.draftValues).reduce(
             (sum, v) =>
                 sum + (typeof v === "number" && Number.isFinite(v) ? v : 0),
             0,
         );
     }
+
     get maxScore(): number {
         if (!this.current) return 0;
 
@@ -135,11 +136,12 @@ export class AssessmentStore {
             runInAction(() => {
                 this.current = detail;
 
-                const initial: Record<string, number> = {};
+                // Собираем draftValues — только заполненные критерии
+                const initial: Record<string, number | undefined> = {};
                 for (const criterion of detail.event.criteria) {
                     const savedValue =
                         detail.my_assessment?.criteria_values[criterion.key];
-                    if (savedValue !== undefined) {
+                    if (typeof savedValue === "number") {
                         initial[criterion.key] = savedValue;
                     }
                 }
@@ -165,23 +167,30 @@ export class AssessmentStore {
     async save(isAutoSave = false): Promise<boolean> {
         if (!this.current) return false;
         if (!this.hasChanges && !isAutoSave) return false;
-        if (this.saveStatus === 'saving') return false;
+        if (this.saveStatus === "saving") return false;
 
         this.cancelAutoSave();
-        this.saveStatus = 'saving';
+        this.saveStatus = "saving";
         this.error = null;
 
         try {
+            // Фильтруем undefined — отправляем только заполненные критерии
+            const criteriaValues: Record<string, number> = {};
+            for (const [key, value] of Object.entries(this.draftValues)) {
+                if (typeof value === "number" && Number.isFinite(value)) {
+                    criteriaValues[key] = value;
+                }
+            }
+
             const payload: SaveAssessmentRequest = {
                 presentation_id: this.current.id,
-                criteria_values: this.draftValues,
+                criteria_values: criteriaValues,
                 comment: this.draftComment.trim() || null,
             };
 
             const response = await assessmentsApi.save(payload);
 
             runInAction(() => {
-                // 1. Обновляем current
                 if (this.current) {
                     this.current = {
                         ...this.current,
@@ -194,18 +203,17 @@ export class AssessmentStore {
                         },
                     };
 
-                    // 2. ✅ Обновляем доклад в PresentationStore
                     this.syncPresentationStore();
                 }
                 this.savedAt = response.data.saved_at;
-                this.saveStatus = 'saved';
+                this.saveStatus = "saved";
             });
 
             return true;
         } catch (error) {
             runInAction(() => {
                 this.error = extractErrorMessage(error);
-                this.saveStatus = 'error';
+                this.saveStatus = "error";
             });
 
             return false;
@@ -224,16 +232,12 @@ export class AssessmentStore {
 
         if (!updated) return;
 
-        // Проверяем, есть ли оценка текущего эксперта
         const hasMyAssessment = this.current.my_assessment !== null;
 
-        // Обновляем presentation: количество оценок и моя оценка
         const newAssessmentCount = hasMyAssessment
             ? Math.max(updated.assessments_count ?? 0, 1)
             : (updated.assessments_count ?? 0);
 
-        // Пересчитываем средний балл (упрощённо — аппроксимация)
-        // Точный пересчёт требует данных от API, но мы можем оценить
         const oldMyScore = updated.my_assessment?.total_score ?? 0;
         const newMyScore = this.current.my_assessment?.total_score ?? 0;
         const oldCount = updated.assessments_count ?? 0;
@@ -242,14 +246,11 @@ export class AssessmentStore {
         let newAvg = oldAvg;
         if (hasMyAssessment) {
             if (oldCount === 0) {
-                // Первая оценка
                 newAvg = newMyScore;
             } else if (updated.my_assessment) {
-                // Обновление существующей оценки
                 const sumWithoutMe = oldAvg * oldCount - oldMyScore;
                 newAvg = (sumWithoutMe + newMyScore) / oldCount;
             } else {
-                // Новая оценка от меня (было 0 моих, стало 1)
                 const sumWithoutMe = oldAvg * oldCount;
                 const newCount = oldCount + 1;
                 newAvg = (sumWithoutMe + newMyScore) / newCount;

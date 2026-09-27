@@ -7,6 +7,7 @@ import {
     Check,
     ExternalLink,
     FileText,
+    GraduationCap,
     Loader2,
     Save,
     Tag,
@@ -43,13 +44,18 @@ const AssessmentPage = observer(function AssessmentPage() {
 
     // Загрузка + сохранение при уходе
     useEffect(() => {
-        if (Number.isFinite(numericPresentationId)) {
-            void assessment.fetchPresentation(numericPresentationId);
+        const id = numericPresentationId;
+
+        if (Number.isFinite(id)) {
+            void assessment.fetchPresentation(id);
         }
 
         return () => {
-            // Fire-and-forget сохранение при уходе со страницы
-            if (assessment.hasChanges && assessment.current) {
+            // Сохраняем только если всё ещё тот же доклад
+            if (
+                assessment.current?.id === id &&
+                assessment.hasChanges
+            ) {
                 void assessment.save(true);
             }
         };
@@ -100,12 +106,20 @@ const AssessmentPage = observer(function AssessmentPage() {
     }
 
     const presentation = assessment.current;
-    const allScored = presentation.event.criteria.every(
+    const authors = presentation.authors ?? [];
+    const supervisors = presentation.supervisors ?? [];
+    const criteria = presentation.event.criteria ?? [];
+
+    const allScored = criteria.every(
         (c) => typeof assessment.draftValues[c.key] === "number",
     );
-    const scoredCount = presentation.event.criteria.filter(
+    const scoredCount = criteria.filter(
         (c) => assessment.draftValues[c.key] !== undefined,
     ).length;
+
+    const presenter = authors.find((a) => a.is_presenter);
+    
+    
 
     return (
         <AppShell
@@ -141,17 +155,44 @@ const AssessmentPage = observer(function AssessmentPage() {
                     <CardHeader>
                         <div className="flex flex-wrap items-center gap-2">
                             <StatusBadge status={presentation.status} />
-                            {presentation.authors.length > 0 && (
+                            {authors.length > 0 && (
                                 <Badge variant="neutral">
                                     <Tag className="size-3" />
-                                    {presentation.authors.length} автор
-                                    {presentation.authors.length > 1 ? "а" : ""}
+                                    {authors.length}{" "}
+                                    {authors.length === 1
+                                        ? "автор"
+                                        : authors.length < 5
+                                          ? "автора"
+                                          : "авторов"}
                                 </Badge>
                             )}
                         </div>
                         <CardTitle className="mt-2 text-balance text-xl leading-snug md:text-2xl">
                             {presentation.title}
                         </CardTitle>
+
+                        {/* 🆕 Научный руководитель в шапке */}
+                        
+                        {supervisors.length > 0 && (
+                            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                                {supervisors.map((sup, index) => (
+                                    <span
+                                        key={`${sup.full_name}-${index}`}
+                                        className="inline-flex items-center gap-1.5"
+                                    >
+                                        <GraduationCap className="size-4 text-primary" />
+                                        <span className="font-medium text-foreground">
+                                            {sup.full_name}
+                                        </span>
+                                        {sup.degree && (
+                                            <span className="text-muted-foreground">
+                                                · {sup.degree}
+                                            </span>
+                                        )}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </CardHeader>
 
                     <CardContent className="flex flex-col gap-5 pt-0">
@@ -169,37 +210,35 @@ const AssessmentPage = observer(function AssessmentPage() {
                         )}
 
                         {/* Авторы */}
-                        {presentation.authors.length > 0 && (
+                        {authors.length > 0 && (
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     Авторы
                                 </p>
                                 <ul className="flex flex-wrap gap-3">
-                                    {presentation.authors.map(
-                                        (author, index) => (
-                                            <li
-                                                key={`${author.full_name}-${index}`}
-                                                className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
-                                            >
-                                                <User className="size-4 text-muted-foreground" />
-                                                <div className="leading-tight">
-                                                    <p className="text-sm font-medium">
-                                                        {author.full_name}
-                                                        {author.is_presenter && (
-                                                            <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
-                                                                Докладчик
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                    {author.university && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {author.university}
-                                                        </p>
+                                    {authors.map((author, index) => (
+                                        <li
+                                            key={`${author.full_name}-${index}`}
+                                            className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
+                                        >
+                                            <User className="size-4 text-muted-foreground" />
+                                            <div className="leading-tight">
+                                                <p className="text-sm font-medium">
+                                                    {author.full_name}
+                                                    {author.is_presenter && (
+                                                        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                                                            Докладчик
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </li>
-                                        ),
-                                    )}
+                                                </p>
+                                                {author.university && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {author.university}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                         )}
@@ -252,7 +291,7 @@ const AssessmentPage = observer(function AssessmentPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-6 pt-0">
-                            {presentation.event.criteria.map((criterion, i) => {
+                            {criteria.map((criterion, i) => {
                                 const currentValue =
                                     assessment.draftValues[criterion.key];
 
@@ -344,7 +383,7 @@ const AssessmentPage = observer(function AssessmentPage() {
                     />
 
                     <ul className="mt-5 flex flex-col gap-2 border-t border-border pt-5 text-sm">
-                        {presentation.event.criteria.map((c) => (
+                        {criteria.map((c) => (
                             <li
                                 key={c.id}
                                 className="flex items-center justify-between gap-2"
@@ -371,11 +410,9 @@ const AssessmentPage = observer(function AssessmentPage() {
                                     : "text-muted-foreground/40",
                             )}
                         />
-                        {scoredCount}/{presentation.event.criteria.length}{" "}
-                        критериев
+                        {scoredCount}/{criteria.length} критериев
                     </div>
 
-                    {/* Индикатор автосохранения */}
                     <div className="mt-4 min-h-5 border-t border-border pt-4">
                         <SaveIndicator
                             status={assessment.saveStatus}

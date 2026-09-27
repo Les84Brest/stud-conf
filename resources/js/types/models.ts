@@ -6,7 +6,7 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    affiliation: string | null;  
+    affiliation: string | null;
     role: UserRole;
     is_active: boolean;
     last_login_at: string | null;
@@ -31,7 +31,36 @@ export interface Event {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+
+    // Счётчики (приходят из API через withCount)
+    presentations_count?: number;
+    assessments_count?: number;
+    experts_count?: number;
+
+    // Связи (опционально)
+    conference?: Conference;
 }
+
+export interface Conference {
+    id: number;
+    title: string;
+    slug: string;
+    description: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    location: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export type PresentationStatus =
+    | 'draft'
+    | 'submitted'
+    | 'approved'
+    | 'rejected'
+    | 'presented';
+
 export interface PresentationAuthor {
     full_name: string;
     email?: string | null;
@@ -59,12 +88,24 @@ export interface PresentationContributors {
     supervisors: PresentationSupervisor[];
 }
 
+export interface AssessmentSummary {
+    id: number;
+    total_score: number;
+    criteria_values: Record<string, number>;
+    comment: string | null;
+    saved_at: string;
+}
+
+/**
+ * Доклад в списке (краткая информация).
+ * Используется на странице мероприятия, в дашборде, в отчётах.
+ */
 export interface Presentation {
     id: number;
     event_id: number;
     title: string;
     abstract: string | null;
-    contributors: PresentationContributors;  // ← новое поле
+    contributors: PresentationContributors;
     file_path: string | null;
     video_link: string | null;
     status: PresentationStatus;
@@ -72,9 +113,9 @@ export interface Presentation {
     approved_at: string | null;
     rejection_reason: string | null;
 
-    // Для удобства — accessors из бэкенда
-    authors?: PresentationAuthor[];
-    supervisors?: PresentationSupervisor[];
+    // Accessors из бэкенда — всегда массивы
+    authors: PresentationAuthor[];
+    supervisors: PresentationSupervisor[];
 
     assessments_count?: number;
     assessments_avg?: number | null;
@@ -85,16 +126,6 @@ export interface Presentation {
     updated_at: string;
 }
 
-export interface AssessmentSummary {
-    id: number;
-    total_score: number;
-    criteria_values: Record<string, number>;
-    comment: string | null;
-    saved_at: string;
-}
-
-
-
 export interface EventCriteria {
     id: number;
     key: string;
@@ -104,7 +135,9 @@ export interface EventCriteria {
     sort_order: number;
 }
 
-
+/**
+ * Доклад для страницы оценки (полная информация).
+ */
 export interface PresentationDetail {
     id: number;
     title: string;
@@ -120,6 +153,7 @@ export interface PresentationDetail {
         criteria: EventCriteria[];
     };
     authors: PresentationAuthor[];
+    supervisors: PresentationSupervisor[];
     my_assessment: AssessmentSummary | null;
 }
 

@@ -48,6 +48,7 @@ class PresentationController extends Controller
                     'status' => $presentation->status,
                     'submitted_at' => $presentation->submitted_at,
                     'authors' => $presentation->authors,
+                    'supervisors' => $presentation->supervisors,
                     'assessments_count' => $presentation->assessments_count,
                     'assessments_avg' => $presentation->assessments_avg
                         ? round((float) $presentation->assessments_avg, 2)
@@ -110,6 +111,7 @@ public function show(Request $request, Presentation $presentation): JsonResponse
                 ]),
             ],
             'authors' => $presentation->authors,
+            'supervisors' => $presentation->supervisors,
             'my_assessment' => $myAssessment ? [
                 'id' => $myAssessment->id,
                 'total_score' => $myAssessment->total_score,

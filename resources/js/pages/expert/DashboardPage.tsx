@@ -14,56 +14,23 @@ import { EventCard } from "@/components/common/event-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useStore } from "@/context/StoreContext";
+import { getGreetingName } from "@/lib/utils";
 
 const DashboardPage = observer(function DashboardPage() {
     const auth = useAuth();
     const { events } = useStore();
 
-    // Загружаем мероприятия при монтировании
     useEffect(() => {
         if (events.items.length === 0 && !events.loading) {
             void events.fetchMyEvents();
         }
     }, [events]);
 
-    // Берём последнее слово из ФИО (обычно фамилия)
-    const firstName =
-        auth.user?.name.split(" ").filter(Boolean).slice(-1)[0] ?? "коллега";
-
-    /**
-     * Функция для получения имени для приветствия.
-     * Имя имеет вид Фамилия Имя Отчество, поэтому берём берем последние 2 слова
-     * Если фамилия имя то одно
-     * @returns string
-     */
-
-    const getGreetingName = () => {
-        const { name } = auth.user ?? {};
-
-        if (!name) return "коллега";
-
-
-        const parts = name.split(" ").filter(Boolean);
-
-        switch (parts.length) {
-            case 1:
-                return parts[0];
-            case 2:
-                return parts[1];
-            case 3:
-                return `${parts[1]} ${parts[2]}`;
-            default:
-                return parts.slice(-2).join(" ");
-        }
-
-    };
-
     return (
         <AppShell title="Панель" breadcrumb="Главная / Панель">
-            {/* ============ Приветствие ============ */}
             <section className="mb-8">
                 <h2 className="text-xl font-semibold md:text-2xl">
-                    Добрый день, {getGreetingName()}
+                    Добрый день, {getGreetingName(auth.user?.name)}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                     Обзор мероприятий, на которых вы являетесь экспертом, и

@@ -7,6 +7,7 @@ import {
     CheckCircle2,
     Clock,
     FileText,
+    GraduationCap,
     User,
 } from "lucide-react";
 import { observer } from "mobx-react-lite";
@@ -14,15 +15,9 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/common/status-badge";
 import { useStore } from "@/context/StoreContext";
-import { cn } from "@/lib/utils";
 import type { Presentation } from "@/types";
 
 // ============== Утилиты ==============
@@ -39,21 +34,6 @@ function formatDate(iso: string | null): string {
     }
 }
 
-function getStatusBadge(status: Presentation["status"]) {
-    switch (status) {
-        case "approved":
-            return { label: "Одобрен", variant: "success" as const };
-        case "rejected":
-            return { label: "Отклонён", variant: "danger" as const };
-        case "presented":
-            return { label: "Представлен", variant: "default" as const };
-        case "submitted":
-            return { label: "На рассмотрении", variant: "warning" as const };
-        default:
-            return { label: "Черновик", variant: "neutral" as const };
-    }
-}
-
 // ============== Карточка доклада ==============
 const PresentationCard = observer(function PresentationCard({
     presentation,
@@ -63,16 +43,15 @@ const PresentationCard = observer(function PresentationCard({
     eventId: number;
 }) {
     const isAssessed = presentation.my_assessment !== null;
-    const statusBadge = getStatusBadge(presentation.status);
+    const authors = presentation.authors ?? [];
+    const supervisors = presentation.supervisors ?? [];
 
     return (
         <Card className="group gap-0 overflow-hidden p-0 transition-shadow hover:shadow-md">
             <CardHeader className="p-5 pb-3">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={statusBadge.variant}>
-                            {statusBadge.label}
-                        </Badge>
+                        <StatusBadge status={presentation.status} />
                         {isAssessed ? (
                             <Badge variant="success">
                                 <CheckCircle2 className="size-3" />
@@ -92,12 +71,26 @@ const PresentationCard = observer(function PresentationCard({
                     {presentation.title}
                 </CardTitle>
 
-                {presentation.authors && presentation.authors.length > 0 && (
-                    <span className="inline-flex items-center gap-1.5">
+                {/* Авторы */}
+                {authors.length > 0 && (
+                    <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                         <User className="size-3.5" />
-                        {presentation.authors
-                            .map((a) => a.full_name)
-                            .join(", ")}
+                        {authors.map((a) => a.full_name).join(", ")}
+                    </span>
+                )}
+
+                {/* 🆕 Научный руководитель */}
+                {supervisors.length > 0 && (
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <GraduationCap className="size-3.5 text-primary" />
+                        <span className="text-foreground/80">
+                            {supervisors.map((s) => s.full_name).join(", ")}
+                        </span>
+                        {supervisors[0]?.degree && (
+                            <span className="text-xs text-muted-foreground">
+                                · {supervisors[0].degree}
+                            </span>
+                        )}
                     </span>
                 )}
             </CardHeader>
@@ -149,11 +142,9 @@ const EventPage = observer(function EventPage() {
     useEffect(() => {
         if (!Number.isFinite(numericEventId)) return;
 
-        // Загружаем доклады для мероприятия
         void presentations.fetchByEvent(numericEventId);
     }, [numericEventId, presentations]);
 
-    // Если мероприятие не найдено в сторе — грузим все мероприятия
     useEffect(() => {
         if (!event && events.items.length === 0 && !events.loading) {
             void events.fetchMyEvents();
@@ -197,7 +188,6 @@ const EventPage = observer(function EventPage() {
                 ) : null
             }
         >
-            {/* Мета мероприятия */}
             {event && (
                 <section className="mb-8">
                     <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -214,7 +204,6 @@ const EventPage = observer(function EventPage() {
                 </section>
             )}
 
-            {/* Прогресс оценки */}
             {presentations.items.length > 0 && (
                 <Card className="mb-6">
                     <CardContent className="p-5">
@@ -232,7 +221,6 @@ const EventPage = observer(function EventPage() {
                 </Card>
             )}
 
-            {/* Ошибка */}
             {presentations.error && (
                 <div className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
                     <AlertCircle className="mt-0.5 size-5 shrink-0" />
@@ -258,7 +246,6 @@ const EventPage = observer(function EventPage() {
                 </div>
             )}
 
-            {/* Список докладов */}
             <section aria-label="Доклады">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold">Доклады</h2>
@@ -270,7 +257,6 @@ const EventPage = observer(function EventPage() {
                         )}
                 </div>
 
-                {/* Загрузка */}
                 {presentations.loading && presentations.items.length === 0 && (
                     <div className="grid gap-4 md:grid-cols-2">
                         {[1, 2, 3, 4].map((i) => (
@@ -282,7 +268,6 @@ const EventPage = observer(function EventPage() {
                     </div>
                 )}
 
-                {/* Пусто */}
                 {!presentations.loading &&
                     presentations.items.length === 0 &&
                     !presentations.error && (
@@ -298,7 +283,6 @@ const EventPage = observer(function EventPage() {
                         </div>
                     )}
 
-                {/* Список */}
                 {presentations.items.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-2">
                         {presentations.items.map((p) => (
