@@ -93,14 +93,12 @@ const PresentationCard = observer(function PresentationCard({
                 </CardTitle>
 
                 {presentation.authors && presentation.authors.length > 0 && (
-                    <CardDescription className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="inline-flex items-center gap-1.5">
-                            <User className="size-3.5" />
-                            {presentation.authors
-                                .map((a) => a.full_name)
-                                .join(", ")}
-                        </span>
-                    </CardDescription>
+                    <span className="inline-flex items-center gap-1.5">
+                        <User className="size-3.5" />
+                        {presentation.authors
+                            .map((a) => a.full_name)
+                            .join(", ")}
+                    </span>
                 )}
             </CardHeader>
 

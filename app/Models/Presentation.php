@@ -20,10 +20,13 @@ class Presentation extends Model
     const STATUS_REJECTED = 'rejected';
     const STATUS_PRESENTED = 'presented';
 
+    protected $appends = ['authors', 'supervisors'];
+
     protected $fillable = [
         'event_id',
         'title',
         'abstract',
+        'contributors',
         'file_path',
         'video_link',
         'status',
@@ -32,10 +35,20 @@ class Presentation extends Model
         'rejection_reason',
     ];
 
-    protected $casts = [
-        'submitted_at' => 'datetime',
-        'approved_at' => 'datetime',
-    ];
+    // protected $casts = [
+    //     'submitted_at' => 'datetime',
+    //     'approved_at' => 'datetime',
+    // ];
+
+    protected function casts(): array
+    {
+        return [
+            'contributors' => 'array',  // ← JSON автоматически распарсится
+            'submitted_at' => 'datetime',
+            'approved_at' => 'datetime',
+        ];
+    }
+
 
     /**
      * Событие, к которому относится доклад
@@ -45,16 +58,6 @@ class Presentation extends Model
         return $this->belongsTo(Event::class);
     }
 
-    /**
-     * Авторы доклада
-     */
-    public function authors(): BelongsToMany
-    {
-        return $this->belongsToMany(Author::class, 'presentation_author')
-                    ->withPivot('is_presenter', 'is_corresponding', 'order')
-                    ->withTimestamps()
-                    ->orderBy('presentation_author.order');
-    }
 
     /**
      * Докладчик (основной автор)
@@ -169,5 +172,46 @@ class Presentation extends Model
             self::STATUS_PRESENTED => 'blue',
             default => 'gray',
         };
+    }
+
+
+        /**
+     * Получить список авторов.
+     */
+    public function getAuthorsAttribute(): array
+    {
+        return $this->contributors['authors'] ?? [];
+    }
+
+    /**
+     * Получить научных руководителей.
+     */
+    public function getSupervisorsAttribute(): array
+    {
+        return $this->contributors['supervisors'] ?? [];
+    }
+
+    /**
+     * Получить основного докладчика.
+     */
+    public function getPresenterAttribute(): ?array
+    {
+        foreach ($this->authors as $author) {
+            if (!empty($author['is_presenter'])) {
+                return $author;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Строка со всеми авторами (через запятую).
+     */
+    public function getAuthorsStringAttribute(): string
+    {
+        return collect($this->authors)
+            ->pluck('full_name')
+            ->filter()
+            ->implode(', ');
     }
 }

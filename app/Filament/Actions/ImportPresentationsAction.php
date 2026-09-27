@@ -4,6 +4,7 @@ namespace App\Filament\Actions;
 
 use App\Models\Event;
 use App\Services\PresentationImportService;
+use App\Exports\PresentationsTemplateExport;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -34,6 +35,24 @@ class ImportPresentationsAction
                 'Первая строка должна содержать заголовки.'
             )
             ->modalSubmitActionLabel('Импортировать')
+            ->extraModalFooterActions([
+                Action::make('download_template')
+                    ->label('Скачать шаблон')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->action(function () {
+                        return Excel::download(
+                            new PresentationsTemplateExport(),
+                            'template_presentations.xlsx'
+                        );
+                    }),
+            ])
+            ->modalDescription(
+                'Загрузите файл Excel (.xlsx) или CSV. Первая строка — заголовки. ' .
+                'Обязательные колонки: «ФИО докладчика» и «Название доклада». ' .
+                'Соавторы указываются через точку с запятой (;). ' .
+                'Скачайте шаблон для примера.'
+            )
             ->modalWidth('2xl')
             ->form([
                 Select::make('event_id')

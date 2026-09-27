@@ -171,28 +171,35 @@ const AssessmentPage = observer(function AssessmentPage() {
                         {/* Авторы */}
                         {presentation.authors.length > 0 && (
                             <div>
-                                <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     Авторы
                                 </p>
                                 <ul className="flex flex-wrap gap-3">
-                                    {presentation.authors.map((author) => (
-                                        <li
-                                            key={author.id}
-                                            className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
-                                        >
-                                            <User className="size-4 text-muted-foreground" />
-                                            <div className="leading-tight">
-                                                <p className="text-sm font-medium">
-                                                    {author.full_name}
-                                                </p>
-                                                {author.university && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {author.university}
+                                    {presentation.authors.map(
+                                        (author, index) => (
+                                            <li
+                                                key={`${author.full_name}-${index}`}
+                                                className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2"
+                                            >
+                                                <User className="size-4 text-muted-foreground" />
+                                                <div className="leading-tight">
+                                                    <p className="text-sm font-medium">
+                                                        {author.full_name}
+                                                        {author.is_presenter && (
+                                                            <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                                                                Докладчик
+                                                            </span>
+                                                        )}
                                                     </p>
-                                                )}
-                                            </div>
-                                        </li>
-                                    ))}
+                                                    {author.university && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {author.university}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        ),
+                                    )}
                                 </ul>
                             </div>
                         )}

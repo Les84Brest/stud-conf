@@ -28,9 +28,6 @@ class PresentationController extends Controller
 
         $presentations = Presentation::query()
             ->where('event_id', $event->id)
-            ->with([
-                'authors:id,full_name,university,faculty,group_number',
-            ])
             ->withCount('assessments')
             ->withAvg('assessments', 'total_score')
             ->with([

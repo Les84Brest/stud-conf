@@ -48,22 +48,20 @@ class PresentationsTable
                     ->limit(25)
                     ->toggleable(),
                 
-                TextColumn::make('authors')
+                TextColumn::make('authors_string')
                     ->label('Авторы')
-                    ->formatStateUsing(function ($record) {
-                        return $record->authors()->get()
-                            ->map(function ($author) {
-                                return $author->full_name;
-                            })
+                    ->getStateUsing(function ($record) {
+                        return collect($record->authors)
+                            ->pluck('full_name')
+                            ->filter()
                             ->implode(', ');
                     })
                     ->searchable(query: function ($query, $search) {
-                        return $query->whereHas('authors', function ($q) use ($search) {
-                            $q->where('full_name', 'like', "%{$search}%");
-                        });
+                        // Поиск по JSON — используем LIKE по полю contributors
+                        return $query->where('contributors', 'like', "%{$search}%");
                     })
-                    ->limit(40)
-                    ->wrap(),
+                    ->wrap()
+                    ->limit(50),
                 
                 TextColumn::make('status')
                     ->label('Статус')

@@ -10,6 +10,7 @@ use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\TextSize;
 use Filament\Infolists\Components\TextEntry\TextEntrySize;
+use Filament\Infolists\Components\RepeatableEntry;
 
 class PresentationInfolist
 {
@@ -97,22 +98,53 @@ class PresentationInfolist
                             ]),
                     ]),
 
-                Section::make('Авторы')
-                    ->schema([
-                        TextEntry::make('authors')
-                            ->label('Авторы')
-                            ->formatStateUsing(function ($record) {
-                                return $record->authors()->get()
-                                    ->map(function ($author) use ($record) {
-                                        $presenter = $author->pivot->is_presenter ? ' 🎤' : '';
-                                        $corresponding = $author->pivot->is_corresponding ? ' ✉️' : '';
-                                        return $author->full_name . $presenter . $corresponding;
-                                    })
-                                    ->implode(', ');
-                            })
-                            ->columnSpanFull()
-                            ->placeholder('Авторы не добавлены'),
-                    ]),
+                    Section::make('Авторы')
+                        ->schema([
+                            RepeatableEntry::make('contributors.authors')
+                                ->label('')
+                                ->schema([
+                                    TextEntry::make('full_name')
+                                        ->label('ФИО')
+                                        ->weight('bold'),
+
+                                    TextEntry::make('email')
+                                        ->label('Email')
+                                        ->placeholder('—')
+                                        ->copyable(),
+
+                                    TextEntry::make('university')
+                                        ->label('Университет')
+                                        ->placeholder('—'),
+
+                                    TextEntry::make('is_presenter')
+                                        ->label('Докладчик')
+                                        ->badge()
+                                        ->formatStateUsing(fn ($state) => $state ? 'Да' : 'Нет')
+                                        ->color(fn ($state) => $state ? 'success' : 'gray'),
+                                ])
+                                ->columns(4),
+                        ]),
+
+                    Section::make('Научный руководитель')
+                        ->schema([
+                            RepeatableEntry::make('contributors.supervisors')
+                                ->label('')
+                                ->schema([
+                                    TextEntry::make('full_name')
+                                        ->label('ФИО')
+                                        ->weight('bold'),
+
+                                    TextEntry::make('degree')
+                                        ->label('Учёная степень')
+                                        ->placeholder('—'),
+
+                                    TextEntry::make('position')
+                                        ->label('Должность')
+                                        ->placeholder('—'),
+                                ])
+                                ->columns(3),
+                        ])
+                        ->visible(fn ($record) => !empty($record->supervisors)),
 
                 Section::make('Информация о подаче')
                     ->schema([

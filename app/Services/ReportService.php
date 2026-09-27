@@ -157,9 +157,10 @@ class ReportService
         $rows = collect();
 
         foreach ($presentations as $presentation) {
-            $authors = $presentation->authors
-                ->pluck('full_name')
-                ->implode(', ');
+            $authors = collect($presentation->authors)
+                        ->pluck('full_name')
+                        ->filter()
+                        ->implode(', ');
 
             // Для каждого доклада — своя строка на каждого эксперта
             foreach ($presentation->assessments as $assessment) {

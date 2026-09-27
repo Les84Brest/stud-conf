@@ -7,6 +7,7 @@ use App\Models\Author;
 use App\Models\Event;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
@@ -56,44 +57,84 @@ class PresentationForm
                             ->helperText('Краткое описание исследования (до 5000 символов)')
                             ->columnSpanFull(),
                     ]),
+                    Section::make('Авторы доклада')
+                        ->description('Перечислите всех авторов. Отметьте одного как докладчика.')
+                        ->schema([
+                            Repeater::make('contributors.authors')
+                                ->label('Авторы')
+                                ->schema([
+                                    TextInput::make('full_name')
+                                        ->label('ФИО')
+                                        ->required()
+                                        ->maxLength(255),
 
-                Section::make('Авторы')
-                    ->schema([
-                        Select::make('authors')
-                            ->label('Авторы')
-                            ->relationship('authors', 'full_name')
-                            ->options(
-                                Author::orderBy('full_name')
-                                    ->get()
-                                    ->mapWithKeys(function ($author) {
-                                        $label = $author->full_name;
-                                        if ($author->university) {
-                                            $label .= ' (' . $author->university . ')';
-                                        }
-                                        return [$author->id => $label];
-                                    })
-                            )
-                            ->multiple()
-                            ->preload()
-                            ->searchable()
-                            ->required()
-                            ->helperText('Выберите авторов доклада')
-                            ->columnSpanFull(),
-                        
-                        Grid::make(2)
-                            ->schema([
-                                Toggle::make('is_presenter')
-                                    ->label('Автор является докладчиком')
-                                    ->default(false)
-                                    ->helperText('Отметьте, если автор будет выступать с докладом'),
-                                
-                                Toggle::make('is_corresponding')
-                                    ->label('Автор является ответственным')
-                                    ->default(false)
-                                    ->helperText('Отметьте, если автор является ответственным за переписку'),
-                            ]),
-                    ]),
+                                    TextInput::make('email')
+                                        ->label('Email')
+                                        ->email()
+                                        ->maxLength(255),
 
+                                    TextInput::make('university')
+                                        ->label('Университет')
+                                        ->maxLength(255),
+
+                                    TextInput::make('faculty')
+                                        ->label('Факультет')
+                                        ->maxLength(255),
+
+                                    TextInput::make('group_number')
+                                        ->label('Группа')
+                                        ->maxLength(50),
+
+                                    Toggle::make('is_presenter')
+                                        ->label('Докладчик')
+                                        ->default(false),
+
+                                    Toggle::make('is_corresponding')
+                                        ->label('Ответственный')
+                                        ->default(false),
+                                ])
+                                ->columns(3)
+                                ->defaultItems(1)
+                                ->minItems(1)
+                                ->reorderable()
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['full_name'] ?? null)
+                                ->addActionLabel('Добавить автора')
+                                ->columnSpanFull(),
+                        ]),
+
+                    Section::make('Научный руководитель')
+                        ->description('Научные руководители доклада (необязательно)')
+                        ->schema([
+                            Repeater::make('contributors.supervisors')
+                                ->label('Руководители')
+                                ->schema([
+                                    TextInput::make('full_name')
+                                        ->label('ФИО')
+                                        ->required()
+                                        ->maxLength(255),
+
+                                    TextInput::make('degree')
+                                        ->label('Учёная степень')
+                                        ->maxLength(150),
+
+                                    TextInput::make('position')
+                                        ->label('Должность')
+                                        ->maxLength(150),
+
+                                    TextInput::make('email')
+                                        ->label('Email')
+                                        ->email()
+                                        ->maxLength(255),
+                                ])
+                                ->columns(2)
+                                ->defaultItems(0)
+                                ->reorderable()
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['full_name'] ?? null)
+                                ->addActionLabel('Добавить руководителя')
+                                ->columnSpanFull(),
+                        ]),
                 Section::make('Файлы и материалы')
                     ->schema([
                         FileUpload::make('file_path')
