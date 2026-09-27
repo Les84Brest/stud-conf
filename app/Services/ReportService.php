@@ -32,7 +32,6 @@ class ReportService
         $presentations = Presentation::query()
             ->where('event_id', $event->id)
             ->with([
-                'authors:id,full_name',
                 'assessments.expert:id,name',
             ])
             ->orderBy('title')
@@ -147,7 +146,6 @@ class ReportService
         $presentations = Presentation::query()
             ->where('event_id', $event->id)
             ->with([
-                'authors:id,full_name',
                 'assessments.expert:id,name',
                 'event.conference:id,title',
             ])

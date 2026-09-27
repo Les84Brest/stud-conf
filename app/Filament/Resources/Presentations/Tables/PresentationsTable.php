@@ -159,31 +159,28 @@ class PresentationsTable
                         blank: fn ($query) => $query,
                     ),
                 
-                Filter::make('has_authors')
-                    ->label('Есть авторы')
-                    ->query(fn ($query) => $query->whereHas('authors'))
-                    ->toggle(),
+
                 
                 Filter::make('has_assessments')
                     ->label('Есть оценки')
                     ->query(fn ($query) => $query->whereHas('assessments'))
                     ->toggle(),
                 
+                Filter::make('has_authors')
+                    ->label('Есть авторы')
+                    ->query(fn ($query) => $query->whereNotNull('contributors'))
+                    ->toggle(),
+
                 Filter::make('author_name')
                     ->label('Автор')
                     ->form([
-                        TextInput::make('author_name')
-                            ->label('ФИО автора')
-                            ->placeholder('Введите имя автора'),
+                        TextInput::make('author_name')->label('ФИО автора'),
                     ])
                     ->query(function ($query, array $data) {
-                        return $query
-                            ->when(
-                                $data['author_name'],
-                                fn ($q) => $q->whereHas('authors', function ($q) use ($data) {
-                                    $q->where('full_name', 'like', "%{$data['author_name']}%");
-                                })
-                            );
+                        return $query->when(
+                            $data['author_name'],
+                            fn ($q) => $q->where('contributors', 'like', "%{$data['author_name']}%")
+                        );
                     }),
             ])
             ->actions([

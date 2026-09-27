@@ -90,7 +90,6 @@ class EventReport extends Page implements HasForms, HasTable
         return \App\Models\Assessment::query()
             ->where('event_id', $this->eventId)
             ->with([
-                'presentation.authors:id,full_name',
                 'presentation.event.conference:id,title',
                 'expert:id,name',
                 'presentation.event.criteria',
@@ -128,13 +127,9 @@ class EventReport extends Page implements HasForms, HasTable
                     ->wrap()
                     ->limit(50),
 
-                TextColumn::make('presentation.authors')
+                TextColumn::make('presentation.authors_string')
                     ->label('Авторы')
-                    ->getStateUsing(function ($record) {
-                        return $record->presentation->authors
-                            ->pluck('full_name')
-                            ->implode(', ');
-                    })
+                    ->getStateUsing(fn ($record) => $record->presentation->authors_string)
                     ->wrap()
                     ->toggleable(),
 

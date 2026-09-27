@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Presentation extends Model
@@ -60,22 +59,6 @@ class Presentation extends Model
 
 
     /**
-     * Докладчик (основной автор)
-     */
-    public function presenter(): BelongsToMany
-    {
-        return $this->authors()->wherePivot('is_presenter', true);
-    }
-
-    /**
-     * Ответственный автор
-     */
-    public function correspondingAuthor(): BelongsToMany
-    {
-        return $this->authors()->wherePivot('is_corresponding', true);
-    }
-
-    /**
      * Оценки доклада
      */
     public function assessments(): HasMany
@@ -88,9 +71,9 @@ class Presentation extends Model
      */
     public function getUniqueAuthorsListAttribute(): string
     {
-        return $this->authors
-            ->filter(fn ($author) => filled($author?->full_name))
-            ->unique(fn ($author) => $author->id ?? $author->full_name)
+        return collect($this->authors)
+            ->filter(fn ($author) => filled($author['full_name'] ?? null))
+            ->unique(fn ($author) => $author['full_name'] ?? null)
             ->values()
             ->pluck('full_name')
             ->implode(', ');

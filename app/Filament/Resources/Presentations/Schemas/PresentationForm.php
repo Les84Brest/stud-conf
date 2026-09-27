@@ -3,7 +3,6 @@
 
 namespace App\Filament\Resources\Presentations\Schemas;
 
-use App\Models\Author;
 use App\Models\Event;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;

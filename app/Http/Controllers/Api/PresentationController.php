@@ -76,7 +76,6 @@ public function show(Request $request, Presentation $presentation): JsonResponse
         'event.criteria' => function ($q) {
             $q->where('is_active', true)->orderBy('sort_order');
         },
-        'authors',
     ]);
 
     // Проверка доступа эксперта к мероприятию
