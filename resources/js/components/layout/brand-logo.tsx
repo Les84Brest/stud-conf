@@ -7,6 +7,9 @@ interface BrandLogoProps {
     tone?: 'default' | 'onDark';
 }
 
+const LOGO_PATH = '/images/logo.png';
+const INVERSE_LOGO_PATH = '/images/logo-inverted.png';
+
 export function BrandLogo({
     className,
     showWordmark = true,
@@ -14,27 +17,8 @@ export function BrandLogo({
 }: BrandLogoProps) {
     return (
         <span className={cn('inline-flex items-center gap-2.5', className)}>
-            <span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                <svg
-                    viewBox="0 0 24 24"
-                    className="size-5"
-                    fill="none"
-                    aria-hidden="true"
-                >
-                    <path
-                        d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinejoin="round"
-                    />
-                    <path
-                        d="M8 12.5l2.4 2.4L16 9.5"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
+            <span className="grid size-9 place-items-center rounded-lg  text-primary-foreground shadow-sm">
+                <img src={tone === 'onDark' ? INVERSE_LOGO_PATH : LOGO_PATH} alt="Лого БрГТУ" />
             </span>
             {showWordmark && (
                 <span
@@ -43,7 +27,7 @@ export function BrandLogo({
                         tone === 'onDark' ? 'text-white' : 'text-foreground',
                     )}
                 >
-                    Reviewa
+                    БрГТУ конференции
                 </span>
             )}
         </span>
